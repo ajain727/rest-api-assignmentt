@@ -1,26 +1,64 @@
-const express = require('express');
-const app = express();
-const port = 3000;
+const express = require("express");
+const { v4: generateId } = require("uuid");
 
-// Middleware to parse JSON bodies
-app.use(express.json());
+const service = express();
+service.use(express.json());
 
-// **************************************************************
-// Put your implementation here
-// If necessary to add imports, please do so in the section above
+// in-memory storage
+let people = [];
 
-app.get('/', (req, res) => {
-    res.send('Hello World!');
+// Create a Person
+service.post("/users", (req, res) => {
+  const { name, email } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: "Name and email are required" });
+  }
+  const person = { id: generateId(), name, email };
+  people.push(person);
+  res.status(201).json(person);
 });
 
-// Do not touch the code below this comment
-// **************************************************************
+// Retrieve a Person
+service.get("/users/:identifier", (req, res) => {
+  const person = people.find(p => p.id === req.params.identifier);
+  if (!person) {
+    return res.status(404).json({ error: "User not found" });
+  }
+  res.json(person);
+});
 
-// Start the server (only if not in test mode)
-if (process.env.NODE_ENV !== 'test') {
-    app.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
-    });
+// Update a Person
+service.put("/users/:identifier", (req, res) => {
+  const { name, email } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: "Name and email are required" });
+  }
+  const person = people.find(p => p.id === req.params.identifier);
+  if (!person) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  person.name = name;
+  person.email = email;
+  res.json(person);
+});
+
+// Delete a Person
+service.delete("/users/:identifier", (req, res) => {
+  const index = people.findIndex(p => p.id === req.params.identifier);
+  if (index === -1) {
+    return res.status(404).json({ error: "User not found" });
+  }
+  people.splice(index, 1);
+  res.status(204).send();
+});
+
+// Start server only if not testing
+if (process.env.NODE_ENV !== "test") {
+  const PORT = process.env.PORT || 3000;
+  service.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 }
 
-module.exports = app; // Export the app for testing
+module.exports = service; // required for Jest
